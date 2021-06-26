@@ -1,0 +1,4 @@
+*.Rhistory
+*.RData
+.Rproj.user
+2018-citibike-tripdata.csv

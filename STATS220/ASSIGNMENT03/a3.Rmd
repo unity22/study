@@ -1,0 +1,118 @@
+---
+title: Assignment 3
+output: 
+  html_document:
+    self_contained: true
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include = FALSE}
+library(knitr)
+opts_knit$set(root.dir = here::here())
+opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, comment = "#>", 
+  tidy = "styler", fig.retina = 3)
+```
+
+<!-- DO NOT edit anything above! -->
+
+```{r pkgs, echo = FALSE}
+# include all packages you need in this chunk
+library(rvest)
+library(lubridate)
+library(tidyverse)
+```
+
+```{r data-read}
+nycbikes18 <- read_csv("data/2018-citibike-tripdata.csv",
+  locale = locale(tz = "America/New_York"))
+```
+
+## Q1: Web scraping
+
+```{r web-scrape}
+citiBikePricingLink <- "https://www.citibikenyc.com/pricing"
+citiBikePage <- read_html(citiBikePricingLink)
+plan <- citiBikePage %>%
+  html_elements("h2.type-alpha--l")%>%
+  html_text(trim=TRUE) %>%
+  head(3)
+price <- citiBikePage %>%
+  html_elements("p.type-alpha--m") %>%
+  html_text(trim=TRUE) 
+minutes <- citiBikePage %>%
+  html_elements("p.type-alpha--s") %>%
+  html_text(trim=TRUE) %>%
+  head(3)
+table <- tibble(Plan = plan, Price = price, Minutes = minutes)
+kable(table)
+
+```
+
+## Q2: Critique
+After comparing with analyses of the "citibike nyc" data found on other reports found, I noticed that the age groups were equally grouped into age ranges of approximately 10 years (e.g 35-44 years), whereas for the data given in Assignment 2 Question 4, the age groups vary from range 10 years (e.g 0-14 years, 15-24 years) to 20 years(e.g 25-44 years, 45-64 years.
+
+Reference:
+
+https://medium.com/@clairekeser/using-nyc-citi-bike-data-to-help-bike-enthusiasts-find-their-mates-70a661c098f1#dc54
+
+(Refer to the section: "Riders per Age Group")
+
+## Q3: Polishing
+
+```{r polish}
+age_brk <- c(0, 14, 24, 34, 44, 54, 64, Inf)
+nycbikes18_age <- nycbikes18 %>% 
+  mutate(
+    tripduration = tripduration / 60,
+    birth_year = case_when(birth_year < 1900 ~ NA_real_, TRUE ~ birth_year),
+    age = 2018 - birth_year,
+    age_group = cut(age, age_brk, include.lowest = TRUE),
+    age_group = fct_recode(age_group, "65+" = "(64,Inf]")
+  )
+p3 <- nycbikes18_age %>% 
+  filter(is.na(age_group) == FALSE) %>%
+  ggplot(aes(age_group, tripduration)) +
+  geom_boxplot(aes(colour = usertype)) +
+  scale_y_log10() +
+  scale_color_manual(values=c("blue", "red")) +
+  labs(title = "Trip durations per Age group", x = "Age Group", y = "Trip in minutes (on log10)")
+p3
+```
+
+The plot I chose to improve is the boxplot from question 5 of Assignment 2.
+I decided to improve the following factors:
+  - Change the age group ranges to 10 years, as discussed in the previous question (Question 2 Assignment 3)
+  - Filtering out the N/A missing values for the  ages
+  - Adding a title to the plot ("Trip durations per Age group")
+  - Changing the colours to "red" and "blue" for a clearer contrast
+
+After improving the above factors, I found that the median trip duration times for the customers were higher than that of subscribers over all age groups.
+  
+## Q4: Exploration
+```{r plot, echo=FALSE}
+plot <- nycbikes18 %>%
+  mutate(start = hour(starttime), end = hour(stoptime)) %>%
+  ggplot(aes(start, color = usertype)) +
+  geom_freqpoly(binwidth = 1) +
+  scale_x_continuous(breaks=seq(0,23,1)) +
+  coord_cartesian(xlim = c(1, 22)) +
+  labs(title= "Starting hour of users", x= "starting hour", y= "number of users")
+plot
+```
+
+This plot shows the overall trends in the hours that the users start using the bikes. There is a clear peak in starting hour for the users who are subscribers at approximately 8 am and 6 pm, which are the commuting hours for most people. In comparsion to this, there does not seem to be a clear trend for the starting hour of the users who are customers. I believe the reason for this is because, subscribers will always use the bikes in a specific time, whereas the customers will only use the bikes when needed, resulting in a variety of starting hours.
+
+## Appendix
+
+```{r appendix, eval = FALSE}
+plot <- nycbikes18 %>%
+  mutate(start = hour(starttime), end = hour(stoptime)) %>%
+  ggplot(aes(start, color = usertype)) +
+  geom_freqpoly(binwidth = 1) +
+  scale_x_continuous(breaks=seq(0,23,1)) +
+  coord_cartesian(xlim = c(1, 22)) +
+  labs(title= "Starting hour of users", x= "starting hour", y= "number of users")
+plot
+
+```
